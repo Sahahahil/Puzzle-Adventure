@@ -2,12 +2,18 @@ import pygame
 from player import Player
 from npc import NPC
 import time
+from key import Key
+from gate import Gate
 
 class Game:
     def __init__(self, screen):
         self.screen = screen
         self.bg_color = (30, 30, 30)
         self.player = Player(100, 100)
+        self.key = Key(300, 150)
+        self.gate = Gate(700, 250)
+        self.has_key = False
+
         self.npcs = [
             NPC("Guide", 400, 300, personality="wise"),
             NPC("Joker", 200, 400, personality="funny")
@@ -34,11 +40,27 @@ class Game:
                 self.dialogue_text = ""
                 self.talking_to = None
 
+        # Key pickup
+        if self.key.check_pickup(self.player.rect):
+            self.has_key = True
+
+        # Unlock the gate if key collected
+        self.gate.check_unlock(self.has_key)
+
+        # Block player from passing if gate is locked
+        if self.gate.blocks_player(self.player.rect):
+            # Push player back to simulate wall
+            if self.player.rect.right > self.gate.rect.left:
+                self.player.rect.right = self.gate.rect.left
+
     def draw(self):
         self.screen.fill(self.bg_color)
         self.player.draw(self.screen)
         for npc in self.npcs:
             npc.draw(self.screen)
+
+        self.key.draw(self.screen)
+        self.gate.draw(self.screen)
 
         if self.dialogue_text:
             self.draw_dialog_box(self.dialogue_text)

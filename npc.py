@@ -13,7 +13,8 @@ class NPC:
             "wise": [
                 "The door opens only for those who ask the right questions.",
                 "Seek the stone that glows in moonlight.",
-                "Sometimes silence is the best answer."
+                "Sometimes silence is the best answer.",
+                "Have you found the golden key? It open what is locked."
             ],
             "funny": [
                 "Why did the wizard cross the road? No one knows!",
