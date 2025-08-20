@@ -12,20 +12,18 @@ class NPC:
         self.dialogues = {
             "wise": [
                 "The door opens only for those who ask the right questions.",
-                "Seek the stone that glows in moonlight",
-                "Sometimes silence is the best answer"
+                "Seek the stone that glows in moonlight.",
+                "Sometimes silence is the best answer."
             ],
-
             "funny": [
                 "Why did the wizard cross the road? No one knows!",
-                "I'd help you, but I left my clue in my other robe",
-                "I speak in riddles... or do I?"
+                "I’d help you, but I left my clue in my other robe.",
+                "I speak in riddles… or do I?"
             ],
-
             "neutral": [
-                "Hello there, Traveler!",
+                "Hello, traveler.",
                 "Good luck on your quest.",
-                "It's quiet here, too quiet."
+                "It's quiet here... too quiet."
             ]
         }
 
@@ -33,4 +31,4 @@ class NPC:
         screen.blit(self.image, self.rect)
 
     def talk(self):
-        print(f"{self.name} says:", random.choice(self.dialogues[self.personality]))
+        return f"{self.name}: {random.choice(self.dialogues[self.personality])}"
