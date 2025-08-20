@@ -11,8 +11,8 @@ class Player:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]: self.rect.x -= self.speed
         if keys[pygame.K_RIGHT]: self.rect.x += self.speed
-        if keys[pygame.K_UP]: self.rect.x -= self.speed
-        if keys[pygame.K_DOWN]: self.rect.x += self.speed
+        if keys[pygame.K_UP]: self.rect.y -= self.speed
+        if keys[pygame.K_DOWN]: self.rect.y += self.speed
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
