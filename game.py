@@ -1,6 +1,7 @@
 import pygame
 from player import Player
 from npc import NPC
+import time
 
 class Game:
     def __init__(self, screen):
@@ -14,14 +15,24 @@ class Game:
         self.dialogue_text = ""  # Store dialogue to show
         self.font = pygame.font.SysFont("arial", 20)
 
+        self.talking_to = None 
+        self.last_dialogue_time = 0
+
     def update(self):
         self.player.move()
 
-        # Check NPC interaction
-        self.dialogue_text = ""
-        for npc in self.npcs:
-            if self.player.rect.colliderect(npc.rect):
-                self.dialogue_text = npc.talk()
+        if self.talking_to is None:
+            for npc in self.npcs:
+                if self.player.rect.colliderect(npc.rect):
+                    self.dialogue_text = npc.talk()
+                    self.talking_to = npc
+                    self.last_dialogue_time = time.time()
+                    break
+        else:
+            # If player walks away, stop showing dialogue
+            if not self.player.rect.colliderect(self.talking_to.rect):
+                self.dialogue_text = ""
+                self.talking_to = None
 
     def draw(self):
         self.screen.fill(self.bg_color)
