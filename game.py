@@ -4,6 +4,7 @@ from npc import NPC
 import time
 from key import Key
 from gate import Gate
+from maze import Maze
 
 class Game:
     def __init__(self, screen):
@@ -18,52 +19,73 @@ class Game:
             NPC("Guide", 400, 300, personality="wise"),
             NPC("Joker", 200, 400, personality="funny")
         ]
-        self.dialogue_text = ""  # Store dialogue to show
-        self.font = pygame.font.SysFont("arial", 20)
 
-        self.talking_to = None 
+        self.dialogue_text = ""
+        self.font = pygame.font.SysFont("arial", 20)
+        self.font_big = pygame.font.SysFont("arial", 28)
+
+        self.talking_to = None
         self.last_dialogue_time = 0
 
+        self.state = "main"  # main | maze | returning
+
+        self.teleport_zone = pygame.Rect(self.gate.rect.topleft, self.gate.rect.size)
+        self.show_teleport_prompt = False
+
+        self.return_time = 0
+        self.show_return_msg = False
+
+
     def update(self):
-        self.player.move()
+        # State-based update
+        if self.state == "main":
+            self.update_main()
+        elif self.state == "maze":
+            self.update_maze()
+        elif self.state == "returning":
+            self.update_returning()
 
-        if self.talking_to is None:
-            for npc in self.npcs:
-                if self.player.rect.colliderect(npc.rect):
-                    self.dialogue_text = npc.talk()
-                    self.talking_to = npc
-                    self.last_dialogue_time = time.time()
-                    break
-        else:
-            # If player walks away, stop showing dialogue
-            if not self.player.rect.colliderect(self.talking_to.rect):
-                self.dialogue_text = ""
-                self.talking_to = None
+        # NPC interaction (only during main state)
+        if self.state in ["main", "returning"]:
+            if self.talking_to is None:
+                for npc in self.npcs:
+                    if self.player.rect.colliderect(npc.rect):
+                        self.dialogue_text = npc.talk()
+                        self.talking_to = npc
+                        self.last_dialogue_time = time.time()
+                        break
+            else:
+                if not self.player.rect.colliderect(self.talking_to.rect):
+                    self.dialogue_text = ""
+                    self.talking_to = None
 
-        # Key pickup
-        if self.key.check_pickup(self.player.rect):
-            self.has_key = True
-
-        # Unlock the gate if key collected
-        self.gate.check_unlock(self.has_key)
-
-        # Block player from passing if gate is locked
-        if self.gate.blocks_player(self.player.rect):
-            # Push player back to simulate wall
-            if self.player.rect.right > self.gate.rect.left:
-                self.player.rect.right = self.gate.rect.left
 
     def draw(self):
         self.screen.fill(self.bg_color)
-        self.player.draw(self.screen)
-        for npc in self.npcs:
-            npc.draw(self.screen)
 
-        self.key.draw(self.screen)
-        self.gate.draw(self.screen)
+        if self.state == "maze":
+            self.maze.draw(self.screen)
+
+        self.player.draw(self.screen)
+
+        if self.state != "maze":
+            for npc in self.npcs:
+                npc.draw(self.screen, self.show_return_msg)
+            self.key.draw(self.screen)
+            self.gate.draw(self.screen)
 
         if self.dialogue_text:
             self.draw_dialog_box(self.dialogue_text)
+
+        if self.show_teleport_prompt:
+            prompt = self.font_big.render("Press [E] to enter the portal", True, (255, 255, 255))
+            self.screen.blit(prompt, (200, 540))
+
+        # Draw teleport portal if unlocked
+        if not self.gate.locked:
+            pygame.draw.rect(self.screen, (100, 0, 200), self.teleport_zone, 3)
+
+
 
     def draw_dialog_box(self, text):
         box_width = 760
@@ -78,6 +100,7 @@ class Game:
             line_surf = self.font.render(line, True, (255, 255, 255))
             self.screen.blit(line_surf, (box_x + 10, box_y + 10 + i * 25))
 
+
     def wrap_text(self, text, font, max_width):
         words = text.split(" ")
         lines = []
@@ -91,3 +114,77 @@ class Game:
                 current_line = word + " "
         lines.append(current_line.strip())
         return lines
+
+
+    def update_main(self):
+        self.player.move()
+
+        if self.key.check_pickup(self.player.rect):
+            self.has_key = True
+
+        self.gate.check_unlock(self.has_key)
+
+        if self.gate.blocks_player(self.player.rect):
+            if self.player.rect.right > self.gate.rect.left:
+                self.player.rect.right = self.gate.rect.left
+
+        # Show teleport prompt if gate is open and player is near
+        if not self.gate.locked:
+            self.teleport_zone = pygame.Rect(self.gate.rect.topleft, self.gate.rect.size)
+
+            if self.teleport_zone.colliderect(self.player.rect):
+                self.show_teleport_prompt = True
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_e]:
+                    self.load_maze()
+            else:
+                self.show_teleport_prompt = False
+        else:
+            self.show_teleport_prompt = False
+
+
+
+    def load_maze(self):
+        self.state = "maze"
+        self.maze = Maze()
+        self.player.rect.topleft = (0, 0)
+
+
+    def update_maze(self):
+        self.player.move()
+
+        # Get current cell position
+        cell_x = self.player.rect.x // self.maze.cell_size
+        cell_y = self.player.rect.y // self.maze.cell_size
+
+        # Wall check
+        try:
+            if self.maze.maze[cell_y][cell_x] == 1:
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_RIGHT]:
+                    self.player.rect.x -= self.player.speed
+                if keys[pygame.K_LEFT]:
+                    self.player.rect.x += self.player.speed
+                if keys[pygame.K_DOWN]:
+                    self.player.rect.y -= self.player.speed
+                if keys[pygame.K_UP]:
+                    self.player.rect.y += self.player.speed
+        except IndexError:
+            pass  # If somehow out of maze bounds, ignore
+
+        # Reached maze exit
+        if (cell_x, cell_y) == self.maze.exit_pos:
+            self.state = "returning"
+            self.player.rect.topleft = (100, 100)
+            self.return_time = pygame.time.get_ticks()
+
+
+    def update_returning(self):
+        self.update_main()
+
+        # Show greeting above NPCs for 5 seconds
+        if pygame.time.get_ticks() - self.return_time < 5000:
+            self.show_return_msg = True
+        else:
+            self.show_return_msg = False
+            self.state = "main"

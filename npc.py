@@ -33,3 +33,10 @@ class NPC:
 
     def talk(self):
         return f"{self.name}: {random.choice(self.dialogues[self.personality])}"
+
+    def draw(self, screen, show_return_msg=False):
+        screen.blit(self.image, self.rect)
+        if show_return_msg:
+            font = pygame.font.SysFont("arial", 20)
+            text = font.render("You are back!", True, (255, 255, 0))
+            screen.blit(text, (self.rect.x, self.rect.y - 25))
