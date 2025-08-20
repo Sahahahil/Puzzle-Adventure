@@ -1,0 +1,36 @@
+import pygame
+import random
+
+class NPC:
+    def __init__(self, name, x, y, personality="neutral"):
+        self.name = name
+        self.personality = personality
+        self.image = pygame.Surface((40, 40))
+        self.image.fill((255, 255, 0))
+        self.rect = self.image.get_rect(topleft=(x, y))
+
+        self.dialogues = {
+            "wise": [
+                "The door opens only for those who ask the right questions.",
+                "Seek the stone that glows in moonlight",
+                "Sometimes silence is the best answer"
+            ],
+
+            "funny": [
+                "Why did the wizard cross the road? No one knows!",
+                "I'd help you, but I left my clue in my other robe",
+                "I speak in riddles... or do I?"
+            ],
+
+            "neutral": [
+                "Hello there, Traveler!",
+                "Good luck on your quest.",
+                "It's quiet here, too quiet."
+            ]
+        }
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
+
+    def talk(self):
+        print(f"{self.name} says:", random.choice(self.dialogues[self.personality]))
