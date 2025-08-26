@@ -59,31 +59,34 @@ class Game:
                     self.dialogue_text = ""
                     self.talking_to = None
 
-
     def draw(self):
         self.screen.fill(self.bg_color)
-
-        if self.state == "maze":
-            self.maze.draw(self.screen)
-
-        self.player.draw(self.screen)
-
-        if self.state != "maze":
+        
+        if self.state == "main" or self.state == "returning":
+            self.player.draw(self.screen)
             for npc in self.npcs:
                 npc.draw(self.screen, self.show_return_msg)
+
             self.key.draw(self.screen)
             self.gate.draw(self.screen)
 
-        if self.dialogue_text:
-            self.draw_dialog_box(self.dialogue_text)
+            # ✅ Show purple portal where gate was
+            if not self.gate.locked:
+                pygame.draw.rect(self.screen, (100, 0, 200), self.teleport_zone, 3)
 
-        if self.show_teleport_prompt:
-            prompt = self.font_big.render("Press [E] to enter the portal", True, (255, 255, 255))
-            self.screen.blit(prompt, (200, 540))
+            if self.dialogue_text:
+                self.draw_dialog_box(self.dialogue_text)
 
-        # Draw teleport portal if unlocked
-        if not self.gate.locked:
-            pygame.draw.rect(self.screen, (100, 0, 200), self.teleport_zone, 3)
+            if self.show_teleport_prompt:
+                prompt = self.font_big.render("Press [E] to enter the portal", True, (255, 255, 255))
+                self.screen.blit(prompt, (200, 540))
+
+        elif self.state == "maze":
+            self.maze.draw(self.screen)
+            self.player.draw(self.screen)
+
+
+
 
 
 
@@ -119,6 +122,7 @@ class Game:
     def update_main(self):
         self.player.move()
 
+        # Key Pickup
         if self.key.check_pickup(self.player.rect):
             self.has_key = True
 
@@ -128,19 +132,14 @@ class Game:
             if self.player.rect.right > self.gate.rect.left:
                 self.player.rect.right = self.gate.rect.left
 
-        # Show teleport prompt if gate is open and player is near
-        if not self.gate.locked:
-            self.teleport_zone = pygame.Rect(self.gate.rect.topleft, self.gate.rect.size)
-
-            if self.teleport_zone.colliderect(self.player.rect):
-                self.show_teleport_prompt = True
-                keys = pygame.key.get_pressed()
-                if keys[pygame.K_e]:
-                    self.load_maze()
-            else:
-                self.show_teleport_prompt = False
-        else:
-            self.show_teleport_prompt = False
+        # Show teleport prompt if gate is open
+        self.show_teleport_prompt = False
+        if not self.gate.locked and self.teleport_zone.colliderect(self.player.rect):
+            self.show_teleport_prompt = True
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_e]:
+                self.load_maze()
+                self.show_teleport_prompt = False   # ✅ fix: reset prompt
 
 
 
@@ -151,32 +150,33 @@ class Game:
 
 
     def update_maze(self):
-        self.player.move()
-
-        # Get current cell position
+        keys = pygame.key.get_pressed()
         cell_x = self.player.rect.x // self.maze.cell_size
         cell_y = self.player.rect.y // self.maze.cell_size
+        walls = self.maze.grid[cell_y][cell_x]["walls"]
 
-        # Wall check
-        try:
-            if self.maze.maze[cell_y][cell_x] == 1:
-                keys = pygame.key.get_pressed()
-                if keys[pygame.K_RIGHT]:
-                    self.player.rect.x -= self.player.speed
-                if keys[pygame.K_LEFT]:
-                    self.player.rect.x += self.player.speed
-                if keys[pygame.K_DOWN]:
-                    self.player.rect.y -= self.player.speed
-                if keys[pygame.K_UP]:
-                    self.player.rect.y += self.player.speed
-        except IndexError:
-            pass  # If somehow out of maze bounds, ignore
+        speed = self.player.speed
+        moved = False
 
-        # Reached maze exit
+        if keys[pygame.K_UP] and not walls[0]:
+            self.player.rect.y -= speed
+            moved = True
+        if keys[pygame.K_DOWN] and not walls[2]:
+            self.player.rect.y += speed
+            moved = True
+        if keys[pygame.K_LEFT] and not walls[3]:
+            self.player.rect.x -= speed
+            moved = True
+        if keys[pygame.K_RIGHT] and not walls[1]:
+            self.player.rect.x += speed
+            moved = True
+
+        # Check if player reached exit
         if (cell_x, cell_y) == self.maze.exit_pos:
             self.state = "returning"
             self.player.rect.topleft = (100, 100)
             self.return_time = pygame.time.get_ticks()
+
 
 
     def update_returning(self):

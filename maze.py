@@ -1,37 +1,59 @@
-import pygame
-import random
+import pygame, random
 
 class Maze:
-    def __init__(self, cols=10, rows=10):
+    def __init__(self, cols=20, rows=15, cell_size=40):
         self.cols = cols
         self.rows = rows
-        self.cell_size = 50
-        self.maze = [[1 for _ in range(cols)] for _ in range(rows)]
-        self.generate_maze()
+        self.cell_size = cell_size
+        self.maze = [[1] * cols for _ in range(rows)]  # filled walls
+
+        self.grid = [[{"visited": False, "walls": [True, True, True, True]}
+                      for _ in range(cols)] for _ in range(rows)]
+
+        self.generate_maze(0, 0)
 
         self.exit_pos = (cols - 1, rows - 1)
 
-    def generate_maze(self):
-        visited = [[False for _ in range(self.cols)] for _ in range(self.rows)]
+    def generate_maze(self, cx, cy):
+        """Recursive backtracking algorithm"""
+        self.grid[cy][cx]["visited"] = True
 
-        def dfs(x, y):
-            dirs = [(0,1),(1,0),(0,-1),(-1,0)]
-            random.shuffle(dirs)
-            visited[y][x] = True
-            self.maze[y][x] = 0
-            for dx, dy in dirs:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < self.cols and 0 <= ny < self.rows and not visited[ny][nx]:
-                    self.maze[y + dy//2][x + dx//2] = 0
-                    dfs(nx, ny)
+        directions = [(0, -1), (1, 0), (0, 1), (-1, 0)]  # up, right, down, left
+        random.shuffle(directions)
 
-        dfs(0,0)
+        for dx, dy in directions:
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < self.cols and 0 <= ny < self.rows and not self.grid[ny][nx]["visited"]:
+                # Knock down walls between current and next
+                if dx == 1:  # right
+                    self.grid[cy][cx]["walls"][1] = False
+                    self.grid[ny][nx]["walls"][3] = False
+                if dx == -1:  # left
+                    self.grid[cy][cx]["walls"][3] = False
+                    self.grid[ny][nx]["walls"][1] = False
+                if dy == 1:  # down
+                    self.grid[cy][cx]["walls"][2] = False
+                    self.grid[ny][nx]["walls"][0] = False
+                if dy == -1:  # up
+                    self.grid[cy][cx]["walls"][0] = False
+                    self.grid[ny][nx]["walls"][2] = False
+
+                self.generate_maze(nx, ny)
 
     def draw(self, screen):
+        """Draw maze walls"""
         for y in range(self.rows):
             for x in range(self.cols):
-                rect = (x*self.cell_size, y*self.cell_size, self.cell_size, self.cell_size)
-                color = (50, 50, 50) if self.maze[y][x] == 1 else (200, 200, 200)
-                pygame.draw.rect(screen, color, rect)
-        # Draw exit
-        pygame.draw.rect(screen, (0, 255, 0), (self.exit_pos[0]*self.cell_size, self.exit_pos[1]*self.cell_size, self.cell_size, self.cell_size))
+                walls = self.grid[y][x]["walls"]
+                px, py = x * self.cell_size, y * self.cell_size
+
+                if walls[0]:  # top
+                    pygame.draw.line(screen, (255, 255, 255), (px, py), (px + self.cell_size, py), 2)
+                if walls[1]:  # right
+                    pygame.draw.line(screen, (255, 255, 255), (px + self.cell_size, py),
+                                     (px + self.cell_size, py + self.cell_size), 2)
+                if walls[2]:  # bottom
+                    pygame.draw.line(screen, (255, 255, 255), (px, py + self.cell_size),
+                                     (px + self.cell_size, py + self.cell_size), 2)
+                if walls[3]:  # left
+                    pygame.draw.line(screen, (255, 255, 255), (px, py), (px, py + self.cell_size), 2)
